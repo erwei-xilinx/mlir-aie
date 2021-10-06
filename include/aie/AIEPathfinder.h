@@ -20,6 +20,7 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/graph/subgraph.hpp>
 
 #include "aie/AIEDialect.h" // for WireBundle and Port
 
@@ -46,13 +47,7 @@ struct Channel {  // acts as an edge
 
 // create a graph type that uses Switchboxes as vertices and Channels as edges
 typedef adjacency_list< 
-    vecS, vecS, bidirectionalS, Switchbox, Channel > SwitchboxGraph;
-
-typedef graph_traits<SwitchboxGraph>::vertex_descriptor vertex_descriptor;
-typedef graph_traits<SwitchboxGraph>::edge_descriptor edge_descriptor;
-typedef graph_traits<SwitchboxGraph>::vertex_iterator vertex_iterator;
-typedef graph_traits<SwitchboxGraph>::edge_iterator edge_iterator;
-typedef graph_traits<SwitchboxGraph>::in_edge_iterator in_edge_iterator;
+    vecS, vecS, bidirectionalS, Switchbox, property< edge_index_t, int, Channel > > SwitchboxGraph;
 
 typedef std::pair<int, int> Coord;
 // A SwitchSetting defines the required settings for a Switchbox for a flow
@@ -61,18 +56,29 @@ typedef std::pair<int, int> Coord;
 typedef std::pair< Port, std::set<Port> > SwitchSetting;
 typedef std::map< Switchbox*, SwitchSetting > SwitchSettings;
 
+typedef subgraph<SwitchboxGraph> SwitchboxSubGraph;
+
+typedef graph_traits<SwitchboxSubGraph>::vertex_descriptor vertex_descriptor;
+typedef graph_traits<SwitchboxSubGraph>::edge_descriptor edge_descriptor;
+typedef graph_traits<SwitchboxSubGraph>::vertex_iterator vertex_iterator;
+typedef graph_traits<SwitchboxSubGraph>::edge_iterator edge_iterator;
+typedef graph_traits<SwitchboxSubGraph>::in_edge_iterator in_edge_iterator;
+
 // A Flow defines source and destination vertices
 // Only one source, but any number of destinations (fanout) 
 typedef std::pair< Switchbox*, Port > PathEndPoint;
-typedef std::pair< PathEndPoint, std::vector<PathEndPoint> > Flow;
-
-
+struct Flow {
+  std::pair< PathEndPoint, std::vector<PathEndPoint> > flowSrcDst;
+  SwitchboxSubGraph flowBound;
+};
 
 class Pathfinder {
 private:
-  SwitchboxGraph graph;
+  SwitchboxSubGraph graph;
   std::vector< Flow > flows;
   bool maxIterReached;
+  int maxcol, maxrow;
+  void initializeFlowBound(int maxcol, int maxrow, Flow &flow, int FlowConfig);
 
 public:
   Pathfinder();

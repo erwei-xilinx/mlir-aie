@@ -1349,7 +1349,7 @@ def AIE_SelectOp: AIE_Op<"select", []>, Results<(outs Index)> {
 
 def AIE_FlowRegionOp: AIE_Op<"flowRegion", [SingleBlockImplicitTerminator<"EndOp">]> {
   let arguments = (
-    ins Index:$tile,
+    ins Index:$anchor,
         I32Attr:$width,
         I32Attr:$height
   );
@@ -1372,7 +1372,7 @@ def AIE_FlowRegionOp: AIE_Op<"flowRegion", [SingleBlockImplicitTerminator<"EndOp
     ```
   }];
   let regions = (region AnyRegion:$connections);
-  let assemblyFormat = [{ `(` $tile `,` `[` $width `]` `[` $height `]` `)` regions attr-dict }];
+  let assemblyFormat = [{ `(` $anchor `,` `[` $width `]` `[` $height `]` `)` regions attr-dict }];
   // let verifier = [{ return ::verify(*this); }]; TODO
   // let extraClassDeclaration = [{
   //   int getNumSourceConnections(WireBundle bundle);

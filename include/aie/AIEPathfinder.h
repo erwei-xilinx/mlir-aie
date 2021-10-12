@@ -50,6 +50,8 @@ typedef adjacency_list<
     vecS, vecS, bidirectionalS, Switchbox, property< edge_index_t, int, Channel > > SwitchboxGraph;
 
 typedef std::pair<int, int> Coord;
+typedef std::pair<int, int> BoxSize;
+typedef std::pair<Coord, BoxSize> Box;
 // A SwitchSetting defines the required settings for a Switchbox for a flow
 // SwitchSetting.first is the incoming signal
 // SwitchSetting.second is the fanout
@@ -80,14 +82,14 @@ private:
   // std::vector< SwitchboxSubGraph > flowBounds;
   bool maxIterReached;
   int maxcol, maxrow;
-  void initializeFlowBound(int maxcol, int maxrow, SwitchboxSubGraph &flowBound);
+  void initializeFlowBound(int maxcol, int maxrow, SwitchboxSubGraph &flowBound, Box boundingBox);
 
 public:
   Pathfinder();
   Pathfinder(int maxcol, int maxrow);
   void initializeGraph(int maxcol, int maxrow);
   void addFlow(Coord srcCoords, Port srcPort,
-               Coord dstCoords, Port dstPort);
+               Coord dstCoords, Port dstPort, bool isConstrained, Box boundingBox);
   void addFixedConnection(Coord coord, Port port);
   bool isLegal();
   std::map< PathEndPoint, SwitchSettings > 

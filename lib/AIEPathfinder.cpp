@@ -79,19 +79,19 @@ void Pathfinder::initializeGraph(int maxcol, int maxrow) {
   Pathfinder::maxIterReached = false;
 }
 
-void Pathfinder::initializeFlowBound(int maxcol, int maxrow, SwitchboxSubGraph &flowBound) {
-  // SwitchboxSubGraph& flowBound = graph.create_subgraph();
-  // initialize the bounding box of each flow as a subgraph
-  for(int row = 0; row <= maxrow; row++) {
-    for(int col = 0; col <= maxcol; col++) {
-      int tile_offset = row * (maxcol + 1) + col;
-      add_vertex((vertex_descriptor)tile_offset, flowBound);
-      // if ((col == 2 && row == 0) || (col == 2 && row == 1) || 
-      //     (col == 2 && row == 3) || (col == 3 && row == 1) || 
-      //     (col == 3 && row == 2) || (col == 3 && row == 3)) {
-      //   int tile_offset = row * (maxcol + 1) + col;
-      //   add_vertex((vertex_descriptor)tile_offset, flowBound);
-      // }
+void Pathfinder::initializeFlowBound(int maxcol, int maxrow, SwitchboxSubGraph &flowBound, Box boundingBox) {
+  // get bounding box details
+  Coord anchorCoord = boundingBox.first;
+  unsigned int anchorCol = anchorCoord.first;
+  unsigned int anchorRow = anchorCoord.second;
+  unsigned int width = boundingBox.second.first;
+  unsigned int height = boundingBox.second.second;
+  for(unsigned int row = 0; row <= (unsigned int)maxrow; row++) {
+    for(unsigned int col = 0; col <= (unsigned int)maxcol; col++) {
+      if (col >= anchorCol && col < anchorCol + width && row >= anchorRow && row < anchorRow + height){
+        int tile_offset = row * (maxcol + 1) + col;
+        add_vertex((vertex_descriptor)tile_offset, flowBound);
+      }
     }
   }
   // flowBounds.push_back(flowBound);
@@ -102,7 +102,7 @@ void Pathfinder::initializeFlowBound(int maxcol, int maxrow, SwitchboxSubGraph &
 // add a flow from src to dst
 // can have an arbitrary number of dst locations due to fanout
 void Pathfinder::addFlow(Coord srcCoords, Port srcPort,
-                         Coord dstCoords, Port dstPort) {
+                         Coord dstCoords, Port dstPort, bool isConstrained, Box boundingBox) {
   //check if a flow with this source already exists
   for(unsigned int i = 0; i < flows.size(); i++) {
     Switchbox* otherSrc = flows[i].first.first;
@@ -148,8 +148,14 @@ void Pathfinder::addFlow(Coord srcCoords, Port srcPort,
 
   // create a subgraph for this flow
   // SwitchboxSubGraph& flowBound = graph.create_subgraph(vpair.first, vpair.second);
-  SwitchboxSubGraph& flowBound = graph.create_subgraph();
-  initializeFlowBound(Pathfinder::maxcol, Pathfinder::maxrow, flowBound);
+  // SwitchboxSubGraph& flowBound = graph.create_subgraph();
+  if (isConstrained) {
+    SwitchboxSubGraph& flowBound = graph.create_subgraph();
+    initializeFlowBound(Pathfinder::maxcol, Pathfinder::maxrow, flowBound, boundingBox);
+  }
+  else
+    graph.create_subgraph(vpair.first, vpair.second);
+
 
   return;
 

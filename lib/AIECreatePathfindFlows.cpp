@@ -104,6 +104,9 @@ public:
     pathfinder = Pathfinder(maxcol, maxrow);
     // pathfinder.initializeGraph(maxcol, maxrow);
 
+    // define an empty bounding box
+    Box boundingBox;
+
     // for each flow in the module, add it to pathfinder
     // each source can map to multiple different destinations (fanout)
     for(FlowOp flowOp : module.getOps<FlowOp>()) {
@@ -117,25 +120,47 @@ public:
           stringifyWireBundle(srcPort.first) << (int)srcPort.second <<
           " -> (" << dstCoords.first << ", " << dstCoords.second << ")" <<
           stringifyWireBundle(dstPort.first) << (int)dstPort.second << "\n");
-      pathfinder.addFlow(srcCoords, srcPort, dstCoords, dstPort);
+      // create flow. constrained = false
+      pathfinder.addFlow(srcCoords, srcPort, dstCoords, dstPort, false, boundingBox);
     }
 
     // for each flow in each flowRegion in the module, add it to pathfinder
     // flows within each flowRegion are constrained by the flowRegion's attributes
     for(FlowRegionOp flowRegionOp : module.getOps<FlowRegionOp>()) {
+      // get rectangular bounding box location
+      TileOp boxAnchor = cast<TileOp>(flowRegionOp.anchor().getDefiningOp());
+      Coord boxAnchorCoords = std::make_pair(boxAnchor.colIndex(), boxAnchor.rowIndex());
+      int boxWidth = flowRegionOp.width();
+      int boxHeight = flowRegionOp.height();
+      BoxSize boundingBoxSize = std::make_pair(boxWidth, boxHeight);
+      boundingBox = std::make_pair(boxAnchorCoords, boundingBoxSize);
+      // check if the bounding box definition is legal (TODO: move to verifier?)
+      if (boxAnchorCoords.first < 0 || boxAnchorCoords.first > maxcol || boxAnchorCoords.second < 0 || boxAnchorCoords.second > maxrow){
+        flowRegionOp.emitOpError("north-western anchor (") << boxAnchorCoords.first << "," << boxAnchorCoords.second << ") out of device boundary";
+      }
+      if (boxAnchorCoords.first + boxWidth > maxcol || boxAnchorCoords.second + boxHeight > maxrow){
+        flowRegionOp.emitOpError("bounding box out of device boundary");
+      }
+      // for each flow in flowRegion
       for(FlowOp flowOp : flowRegionOp.getOps<FlowOp>()) {
-        // assert(false);
         TileOp srcTile = cast<TileOp>(flowOp.source().getDefiningOp());
         TileOp dstTile = cast<TileOp>(flowOp.dest().getDefiningOp());
         Coord srcCoords = std::make_pair(srcTile.colIndex(), srcTile.rowIndex());
         Coord dstCoords = std::make_pair(dstTile.colIndex(), dstTile.rowIndex());
         Port srcPort = std::make_pair(flowOp.sourceBundle(), flowOp.sourceChannel());
         Port dstPort = std::make_pair(flowOp.destBundle(), flowOp.destChannel());
+        if (srcCoords.first < boxAnchorCoords.first || srcCoords.first > boxAnchorCoords.first + boxWidth || srcCoords.second < boxAnchorCoords.second || srcCoords.second > boxAnchorCoords.second + boxHeight){
+          flowOp.emitOpError("source out of bounding box");
+        }
+        if (dstCoords.first < boxAnchorCoords.first || dstCoords.first > boxAnchorCoords.first + boxWidth || dstCoords.second < boxAnchorCoords.second || dstCoords.second > boxAnchorCoords.second + boxHeight){
+          flowOp.emitOpError("destination out of bounding box");
+        }
         LLVM_DEBUG(llvm::dbgs() << "\tAdding Flow: (" << srcCoords.first << ", " << srcCoords.second << ")" <<
             stringifyWireBundle(srcPort.first) << (int)srcPort.second <<
             " -> (" << dstCoords.first << ", " << dstCoords.second << ")" <<
             stringifyWireBundle(dstPort.first) << (int)dstPort.second << "\n");
-        pathfinder.addFlow(srcCoords, srcPort, dstCoords, dstPort);
+        // create flow. constrained = true
+        pathfinder.addFlow(srcCoords, srcPort, dstCoords, dstPort, true, boundingBox);
       }
     }
 

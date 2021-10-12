@@ -79,33 +79,22 @@ void Pathfinder::initializeGraph(int maxcol, int maxrow) {
   Pathfinder::maxIterReached = false;
 }
 
-void Pathfinder::initializeFlowBound(int maxcol, int maxrow, Flow &flow, int FlowConfig) {
+void Pathfinder::initializeFlowBound(int maxcol, int maxrow, SwitchboxSubGraph &flowBound) {
+  // SwitchboxSubGraph& flowBound = graph.create_subgraph();
   // initialize the bounding box of each flow as a subgraph
-  if (FlowConfig == 0) {
-    for(int row = 0; row <= maxrow; row++) {
-      for(int col = 0; col <= maxcol; col++) {
-        if ((col == 2 && row == 0) || (col == 2 && row == 1) || 
-            (col == 2 && row == 3) || (col == 3 && row == 1) || 
-            (col == 3 && row == 2) || (col == 3 && row == 3)) {
-          int tile_offset = row * (maxcol + 1) + col;
-          add_vertex((vertex_descriptor)tile_offset, flow.flowBound);
-        }
-      }
+  for(int row = 0; row <= maxrow; row++) {
+    for(int col = 0; col <= maxcol; col++) {
+      int tile_offset = row * (maxcol + 1) + col;
+      add_vertex((vertex_descriptor)tile_offset, flowBound);
+      // if ((col == 2 && row == 0) || (col == 2 && row == 1) || 
+      //     (col == 2 && row == 3) || (col == 3 && row == 1) || 
+      //     (col == 3 && row == 2) || (col == 3 && row == 3)) {
+      //   int tile_offset = row * (maxcol + 1) + col;
+      //   add_vertex((vertex_descriptor)tile_offset, flowBound);
+      // }
     }
   }
-  else {
-    for(int row = 0; row <= maxrow; row++) {
-      for(int col = 0; col <= maxcol; col++) {
-        if ((col == 2 && row == 0) || (col == 3 && row == 0) || 
-            (col == 4 && row == 0) || (col == 4 && row == 1) || 
-            (col == 4 && row == 2) || (col == 3 && row == 2) || 
-            (col == 2 && row == 2)) {
-          int tile_offset = row * (maxcol + 1) + col;
-          add_vertex((vertex_descriptor)tile_offset, flow.flowBound);
-        }
-      }
-    }
-  }
+  // flowBounds.push_back(flowBound);
 }
 
 
@@ -115,9 +104,9 @@ void Pathfinder::initializeFlowBound(int maxcol, int maxrow, Flow &flow, int Flo
 void Pathfinder::addFlow(Coord srcCoords, Port srcPort,
                          Coord dstCoords, Port dstPort) {
   //check if a flow with this source already exists
-  for(auto flow : flows) {
-    Switchbox* otherSrc = flow.flowSrcDst.first.first;
-    Port otherPort = flow.flowSrcDst.first.second;
+  for(unsigned int i = 0; i < flows.size(); i++) {
+    Switchbox* otherSrc = flows[i].first.first;
+    Port otherPort = flows[i].first.second;
     if(otherSrc->col == srcCoords.first &&
       otherSrc->row == srcCoords.second &&
       otherPort == srcPort ) {
@@ -133,9 +122,7 @@ void Pathfinder::addFlow(Coord srcCoords, Port srcPort,
           }
         }
         // add the destination to this existing flow, and finish
-        flow.flowSrcDst.second.push_back(dst);
-        // create a subgraph for this flow
-        flow.flowBound = graph.create_subgraph();
+        flows[i].second.push_back(dst);
         return;
     }
   }
@@ -147,16 +134,23 @@ void Pathfinder::addFlow(Coord srcCoords, Port srcPort,
     Switchbox* sb = &graph[*v];
     //check if this vertex matches the source 
     if(sb->col == srcCoords.first && sb->row == srcCoords.second)
-      flow.flowSrcDst.first = std::make_pair(sb, srcPort);
+      flow.first = std::make_pair(sb, srcPort);
     
     //check if this vertex matches the destination 
     if(sb->col == dstCoords.first && sb->row == dstCoords.second)
-      flow.flowSrcDst.second.push_back(std::make_pair(sb, dstPort));
-    // create a subgraph for this flow
-    flow.flowBound = graph.create_subgraph();
+      flow.second.push_back(std::make_pair(sb, dstPort));
   }
 
+  // assert(num_vertices(flow.flowBound) != 0 && "B");
+  // assert(num_vertices(graph) != 0 && "C");
+
   flows.push_back(flow);
+
+  // create a subgraph for this flow
+  // SwitchboxSubGraph& flowBound = graph.create_subgraph(vpair.first, vpair.second);
+  SwitchboxSubGraph& flowBound = graph.create_subgraph();
+  initializeFlowBound(Pathfinder::maxcol, Pathfinder::maxrow, flowBound);
+
   return;
 
 
@@ -244,23 +238,37 @@ Pathfinder::findPaths(const int MAX_ITERATIONS) {
 
     // for each flow, find the shortest path from source to destination
     // update used_capacity for the path between them
-    int FlowConfig = 0; ///////////Hack: get rid of this after demo
+
+    // auto children_subgraphs = graph.children();
+    // int children_count = 0;
+    // for(auto sub = children_subgraphs.first; sub != children_subgraphs.second; sub++) {
+    //   children_count++;
+    //   initializeFlowBound(Pathfinder::maxcol, Pathfinder::maxrow, *sub);
+    // }
+    // assert(children_count == flows.size() && "Flows and children unequal size");
+
+    // Boost subgraph iterator
+    auto children_subgraphs = graph.children();
+    auto flowBoundIter = children_subgraphs.first;
+
     for(auto flow : flows) {
 
       ///////////////////////////////////////////////////////////////
       // here comes the boost subgraph impl
       ///////////////////////////////////////////////////////////////
 
-      initializeFlowBound(Pathfinder::maxcol, Pathfinder::maxrow, flow, FlowConfig);
-      FlowConfig++;
+      // Get subgraph for this flow
+      SwitchboxSubGraph& flowBound = *flowBoundIter;
+      // auto vpairtmp = vertices(graph);
+      // SwitchboxSubGraph& flowBound = graph.create_subgraph(vpairtmp.first, vpairtmp.second);
 
-      auto vpair = vertices(flow.flowBound);
+      auto vpair = vertices(flowBound);
 
       vertex_descriptor src;
       for(vertex_iterator v = vpair.first; v != vpair.second; v++) {
-        Switchbox* sb = &flow.flowBound[*v];
+        Switchbox* sb = &flowBound[*v];
         sb->processed = false;
-        if(sb->col == flow.flowSrcDst.first.first->col && sb->row == flow.flowSrcDst.first.first->row)
+        if(sb->col == flow.first.first->col && sb->row == flow.first.first->row)
           src = *v;
       }
 
@@ -268,35 +276,35 @@ Pathfinder::findPaths(const int MAX_ITERATIONS) {
       // from the start switchbox, find shortest path to each other switchbox
       // output is in the predecessor map, which must then be processed to get
       // individual switchbox settings
-      dijkstra_shortest_paths(flow.flowBound, src,
-                  weight_map(get(&Channel::demand, flow.flowBound))
-                  .predecessor_map(get(&Switchbox::pred, flow.flowBound)));
+      dijkstra_shortest_paths(flowBound, src,
+                  weight_map(get(&Channel::demand, flowBound))
+                  .predecessor_map(get(&Switchbox::pred, flowBound)));
 
       // trace the path of the flow backwards via predecessors
       // increment used_capacity for the associated channels
       SwitchSettings switchSettings = SwitchSettings();
       //set the input bundle for the source endpoint
-      switchSettings[&flow.flowBound[src]].first = flow.flowSrcDst.first.second;
-      flow.flowBound[src].processed = true;
-      for(unsigned int i = 0; i < flow.flowSrcDst.second.size(); i++) {
+      switchSettings[&flowBound[src]].first = flow.first.second;
+      flowBound[src].processed = true;
+      for(unsigned int i = 0; i < flow.second.size(); i++) {
         vertex_descriptor curr;
         for(vertex_iterator v = vpair.first; v != vpair.second; v++)
-          if(flow.flowBound[*v].col == flow.flowSrcDst.second[i].first->col && flow.flowBound[*v].row == flow.flowSrcDst.second[i].first->row)
+          if(flowBound[*v].col == flow.second[i].first->col && flowBound[*v].row == flow.second[i].first->row)
             curr = *v;
-        Switchbox *sb = &flow.flowBound[curr];
+        Switchbox *sb = &flowBound[curr];
 
         //set the output bundle for this destination endpoint
-        switchSettings[sb].second.insert(flow.flowSrcDst.second[i].second);
+        switchSettings[sb].second.insert(flow.second[i].second);
 
         // trace backwards until a vertex already processed is reached
         while(sb->processed == false) {
           // find the edge from the pred to curr by searching incident edges
-          auto inedges = in_edges(curr, flow.flowBound);
+          auto inedges = in_edges(curr, flowBound);
           Channel *ch = nullptr;
           for(in_edge_iterator it = inedges.first; it != inedges.second; it++) {
-            if(source(*it, flow.flowBound) == (unsigned)sb->pred) { 
+            if(source(*it, flowBound) == (unsigned)sb->pred) { 
               // found the channel used in the path
-              ch = &flow.flowBound[*it];
+              ch = &flowBound[*it];
               break;
             }
           }
@@ -310,7 +318,7 @@ Pathfinder::findPaths(const int MAX_ITERATIONS) {
           switchSettings[sb].first = 
             std::make_pair(getConnectingBundle(ch->bundle), ch->used_capacity);
           // add the current Switchbox to the map of the predecessor
-          switchSettings[&flow.flowBound[(vertex_descriptor)sb->pred]].second.insert(
+          switchSettings[&flowBound[(vertex_descriptor)sb->pred]].second.insert(
             std::make_pair(ch->bundle, ch->used_capacity));
 
           ch->used_capacity++;
@@ -322,11 +330,14 @@ Pathfinder::findPaths(const int MAX_ITERATIONS) {
 
           sb->processed = true;
           curr = sb->pred;
-          sb = &flow.flowBound[curr];
+          sb = &flowBound[curr];
         }
       }
       //add this flow to the proposed solution
-      routing_solution[flow.flowSrcDst.first] = switchSettings;
+      routing_solution[flow.first] = switchSettings;
+
+      //increment the subgraph iterator
+      flowBoundIter++;
     }
   } while (!isLegal()); // continue iterations until a legal routing is found
   return routing_solution;

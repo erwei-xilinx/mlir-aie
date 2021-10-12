@@ -67,18 +67,20 @@ typedef graph_traits<SwitchboxSubGraph>::in_edge_iterator in_edge_iterator;
 // A Flow defines source and destination vertices
 // Only one source, but any number of destinations (fanout) 
 typedef std::pair< Switchbox*, Port > PathEndPoint;
-struct Flow {
-  std::pair< PathEndPoint, std::vector<PathEndPoint> > flowSrcDst;
-  SwitchboxSubGraph flowBound;
-};
+// struct Flow {
+//   std::pair< PathEndPoint, std::vector<PathEndPoint> > flowSrcDst;
+//   SwitchboxSubGraph *flowBound;
+// };
+typedef std::pair< PathEndPoint, std::vector<PathEndPoint> > Flow;
 
 class Pathfinder {
 private:
   SwitchboxSubGraph graph;
   std::vector< Flow > flows;
+  // std::vector< SwitchboxSubGraph > flowBounds;
   bool maxIterReached;
   int maxcol, maxrow;
-  void initializeFlowBound(int maxcol, int maxrow, Flow &flow, int FlowConfig);
+  void initializeFlowBound(int maxcol, int maxrow, SwitchboxSubGraph &flowBound);
 
 public:
   Pathfinder();

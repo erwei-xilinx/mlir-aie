@@ -1344,3 +1344,48 @@ def AIE_SelectOp: AIE_Op<"select", []>, Results<(outs Index)> {
   ];
 }
 
+
+/// Experimental flowRegion operations
+
+def AIE_FlowRegionOp: AIE_Op<"flowRegion", [SingleBlockImplicitTerminator<"EndOp">]> {
+  let arguments = (
+    ins Index:$tile,
+        I32Attr:$width,
+        I32Attr:$height
+  );
+
+  let summary = "Declare flow routing constraints";
+  let description = [{
+    This operation defines constraints and attributes for the routing region of AIE.flow.
+    It references a tile as the north-western anchor, and width and height of a rectangular bounding box.
+    TODO: Referece list will be replaced with various constraint ops, including but not limited to bounding boxes.
+    It contains a region of AIE.flow operations to be constrained.
+
+    Example:
+    ```
+    %t11 = aie.tile(1, 1)
+    %t12 = aie.tile(1, 2)
+    %t21 = aie.tile(2, 1)
+    aie.flowRegion(%t11, [2][2]) {
+      aie.flow(%t12, DMA : 0, %t21, DMA : 0)
+    }
+    ```
+  }];
+  let regions = (region AnyRegion:$connections);
+  let assemblyFormat = [{ `(` $tile `,` `[` $width `]` `[` $height `]` `)` regions attr-dict }];
+  // let verifier = [{ return ::verify(*this); }]; TODO
+  // let extraClassDeclaration = [{
+  //   int getNumSourceConnections(WireBundle bundle);
+  //   int getNumDestConnections(WireBundle bundle);
+  //   int colIndex();
+  //   int rowIndex();
+  //   TileOp getTileOp();
+  // }];
+  // let builders = [
+  //   OpBuilder<(ins "Value":$tile),
+  //   [{
+  //             build($_builder, $_state, $_builder.getIndexType(), tile);
+  //             }]>
+  // ];
+}
+

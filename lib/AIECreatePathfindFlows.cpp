@@ -102,6 +102,7 @@ public:
     }
 
     pathfinder = Pathfinder(maxcol, maxrow);
+    // pathfinder.initializeGraph(maxcol, maxrow);
 
     // for each flow in the module, add it to pathfinder
     // each source can map to multiple different destinations (fanout)
@@ -117,6 +118,25 @@ public:
           " -> (" << dstCoords.first << ", " << dstCoords.second << ")" <<
           stringifyWireBundle(dstPort.first) << (int)dstPort.second << "\n");
       pathfinder.addFlow(srcCoords, srcPort, dstCoords, dstPort);
+    }
+
+    // for each flow in each flowRegion in the module, add it to pathfinder
+    // flows within each flowRegion are constrained by the flowRegion's attributes
+    for(FlowRegionOp flowRegionOp : module.getOps<FlowRegionOp>()) {
+      for(FlowOp flowOp : flowRegionOp.getOps<FlowOp>()) {
+        // assert(false);
+        TileOp srcTile = cast<TileOp>(flowOp.source().getDefiningOp());
+        TileOp dstTile = cast<TileOp>(flowOp.dest().getDefiningOp());
+        Coord srcCoords = std::make_pair(srcTile.colIndex(), srcTile.rowIndex());
+        Coord dstCoords = std::make_pair(dstTile.colIndex(), dstTile.rowIndex());
+        Port srcPort = std::make_pair(flowOp.sourceBundle(), flowOp.sourceChannel());
+        Port dstPort = std::make_pair(flowOp.destBundle(), flowOp.destChannel());
+        LLVM_DEBUG(llvm::dbgs() << "\tAdding Flow: (" << srcCoords.first << ", " << srcCoords.second << ")" <<
+            stringifyWireBundle(srcPort.first) << (int)srcPort.second <<
+            " -> (" << dstCoords.first << ", " << dstCoords.second << ")" <<
+            stringifyWireBundle(dstPort.first) << (int)dstPort.second << "\n");
+        pathfinder.addFlow(srcCoords, srcPort, dstCoords, dstPort);
+      }
     }
 
     // add existing connections so Pathfinder knows which resources are available

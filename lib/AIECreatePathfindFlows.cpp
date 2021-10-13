@@ -102,7 +102,6 @@ public:
     }
 
     pathfinder = Pathfinder(maxcol, maxrow);
-    // pathfinder.initializeGraph(maxcol, maxrow);
 
     // define an empty bounding box
     Box boundingBox;
@@ -134,13 +133,6 @@ public:
       int boxHeight = flowRegionOp.height();
       BoxSize boundingBoxSize = std::make_pair(boxWidth, boxHeight);
       boundingBox = std::make_pair(boxAnchorCoords, boundingBoxSize);
-      // check if the bounding box definition is legal (TODO: move to verifier?)
-      if (boxAnchorCoords.first < 0 || boxAnchorCoords.first > maxcol || boxAnchorCoords.second < 0 || boxAnchorCoords.second > maxrow){
-        flowRegionOp.emitOpError("north-western anchor (") << boxAnchorCoords.first << "," << boxAnchorCoords.second << ") out of device boundary";
-      }
-      if (boxAnchorCoords.first + boxWidth > maxcol || boxAnchorCoords.second + boxHeight > maxrow){
-        flowRegionOp.emitOpError("bounding box out of device boundary");
-      }
       // for each flow in flowRegion
       for(FlowOp flowOp : flowRegionOp.getOps<FlowOp>()) {
         TileOp srcTile = cast<TileOp>(flowOp.source().getDefiningOp());
@@ -149,12 +141,6 @@ public:
         Coord dstCoords = std::make_pair(dstTile.colIndex(), dstTile.rowIndex());
         Port srcPort = std::make_pair(flowOp.sourceBundle(), flowOp.sourceChannel());
         Port dstPort = std::make_pair(flowOp.destBundle(), flowOp.destChannel());
-        if (srcCoords.first < boxAnchorCoords.first || srcCoords.first > boxAnchorCoords.first + boxWidth || srcCoords.second < boxAnchorCoords.second || srcCoords.second > boxAnchorCoords.second + boxHeight){
-          flowOp.emitOpError("source out of bounding box");
-        }
-        if (dstCoords.first < boxAnchorCoords.first || dstCoords.first > boxAnchorCoords.first + boxWidth || dstCoords.second < boxAnchorCoords.second || dstCoords.second > boxAnchorCoords.second + boxHeight){
-          flowOp.emitOpError("destination out of bounding box");
-        }
         LLVM_DEBUG(llvm::dbgs() << "\tAdding Flow: (" << srcCoords.first << ", " << srcCoords.second << ")" <<
             stringifyWireBundle(srcPort.first) << (int)srcPort.second <<
             " -> (" << dstCoords.first << ", " << dstCoords.second << ")" <<

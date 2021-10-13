@@ -1374,19 +1374,6 @@ def AIE_FlowRegionOp: AIE_Op<"flowRegion", [SingleBlockImplicitTerminator<"EndOp
   }];
   let regions = (region AnyRegion:$connections);
   let assemblyFormat = [{ `(` $anchor `,` `[` $width `]` `[` $height `]` `)` regions attr-dict }];
-  // let verifier = [{ return ::verify(*this); }]; TODO
-  // let extraClassDeclaration = [{
-  //   int getNumSourceConnections(WireBundle bundle);
-  //   int getNumDestConnections(WireBundle bundle);
-  //   int colIndex();
-  //   int rowIndex();
-  //   TileOp getTileOp();
-  // }];
-  // let builders = [
-  //   OpBuilder<(ins "Value":$tile),
-  //   [{
-  //             build($_builder, $_state, $_builder.getIndexType(), tile);
-  //             }]>
-  // ];
+  let verifier = [{ return ::verify(*this); }];
 }
 

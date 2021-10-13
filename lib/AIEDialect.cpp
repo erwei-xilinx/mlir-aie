@@ -476,6 +476,32 @@ static LogicalResult verify(xilinx::AIE::UseLockOp op) {
   return success();
 }
 
+// flowRegion
+static LogicalResult verify(xilinx::AIE::FlowRegionOp op) {
+  // get rectangular bounding box location
+  xilinx::AIE::TileOp boxAnchor = cast<xilinx::AIE::TileOp>(op.anchor().getDefiningOp());
+  std::pair<int, int> boxAnchorCoords = std::make_pair(boxAnchor.colIndex(), boxAnchor.rowIndex());
+  // get rectangular bounding box size
+  int boxWidth = op.width();
+  int boxHeight = op.height();
+  // for each flow in flowRegion
+  for(xilinx::AIE::FlowOp flowOp : op.getOps<xilinx::AIE::FlowOp>()) {
+    // check if src/dest outside of bounding box
+    xilinx::AIE::TileOp srcTile = cast<xilinx::AIE::TileOp>(flowOp.source().getDefiningOp());
+    xilinx::AIE::TileOp dstTile = cast<xilinx::AIE::TileOp>(flowOp.dest().getDefiningOp());
+    std::pair<int, int> srcCoords = std::make_pair(srcTile.colIndex(), srcTile.rowIndex());
+    std::pair<int, int> dstCoords = std::make_pair(dstTile.colIndex(), dstTile.rowIndex());
+    if (srcCoords.first < boxAnchorCoords.first || srcCoords.first > boxAnchorCoords.first + boxWidth || srcCoords.second < boxAnchorCoords.second || srcCoords.second > boxAnchorCoords.second + boxHeight){
+      flowOp.emitOpError("source outside of bounding box").attachNote() << "bounding box anchor: (" << boxAnchorCoords.first << "," << boxAnchorCoords.second << "), width: " << boxWidth << ", height: " << boxHeight;
+    }
+    if (dstCoords.first < boxAnchorCoords.first || dstCoords.first > boxAnchorCoords.first + boxWidth || dstCoords.second < boxAnchorCoords.second || dstCoords.second > boxAnchorCoords.second + boxHeight){
+      flowOp.emitOpError("destination outside of bounding box").attachNote() << "bounding box anchor: (" << boxAnchorCoords.first << "," << boxAnchorCoords.second << "), width: " << boxWidth << ", height: " << boxHeight;
+    }
+  }
+
+  return success();
+}
+
 #include "aie/AIEEnums.cpp.inc"
 #include "aie/AIEInterfaces.cpp.inc"
 

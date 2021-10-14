@@ -94,7 +94,6 @@ void Pathfinder::initializeFlowBound(int maxcol, int maxrow, SwitchboxSubGraph &
       }
     }
   }
-  // flowBounds.push_back(flowBound);
 }
 
 
@@ -141,14 +140,9 @@ void Pathfinder::addFlow(Coord srcCoords, Port srcPort,
       flow.second.push_back(std::make_pair(sb, dstPort));
   }
 
-  // assert(num_vertices(flow.flowBound) != 0 && "B");
-  // assert(num_vertices(graph) != 0 && "C");
-
   flows.push_back(flow);
 
   // create a subgraph for this flow
-  // SwitchboxSubGraph& flowBound = graph.create_subgraph(vpair.first, vpair.second);
-  // SwitchboxSubGraph& flowBound = graph.create_subgraph();
   if (isConstrained) {
     SwitchboxSubGraph& flowBound = graph.create_subgraph();
     initializeFlowBound(Pathfinder::maxcol, Pathfinder::maxrow, flowBound, boundingBox);
@@ -229,8 +223,6 @@ Pathfinder::findPaths(const int MAX_ITERATIONS) {
                  << "Pathfinder: MAX_ITERATIONS has been exceeded ("
                  << MAX_ITERATIONS
                  << " iterations)...unable to find routing for flows.\n");
-      //return {};
-      // return the invalid solution for debugging purposes
       maxIterReached = true;
       return routing_solution;
     }
@@ -245,14 +237,6 @@ Pathfinder::findPaths(const int MAX_ITERATIONS) {
     // for each flow, find the shortest path from source to destination
     // update used_capacity for the path between them
 
-    // auto children_subgraphs = graph.children();
-    // int children_count = 0;
-    // for(auto sub = children_subgraphs.first; sub != children_subgraphs.second; sub++) {
-    //   children_count++;
-    //   initializeFlowBound(Pathfinder::maxcol, Pathfinder::maxrow, *sub);
-    // }
-    // assert(children_count == flows.size() && "Flows and children unequal size");
-
     // Boost subgraph iterator
     auto children_subgraphs = graph.children();
     auto flowBoundIter = children_subgraphs.first;
@@ -265,8 +249,6 @@ Pathfinder::findPaths(const int MAX_ITERATIONS) {
 
       // Get subgraph for this flow
       SwitchboxSubGraph& flowBound = *flowBoundIter;
-      // auto vpairtmp = vertices(graph);
-      // SwitchboxSubGraph& flowBound = graph.create_subgraph(vpairtmp.first, vpairtmp.second);
 
       auto vpair = vertices(flowBound);
 

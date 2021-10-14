@@ -478,12 +478,20 @@ static LogicalResult verify(xilinx::AIE::UseLockOp op) {
 
 // flowRegion
 static LogicalResult verify(xilinx::AIE::FlowRegionOp op) {
-  // get rectangular bounding box location
-  xilinx::AIE::TileOp boxAnchor = cast<xilinx::AIE::TileOp>(op.anchor().getDefiningOp());
-  std::pair<int, int> boxAnchorCoords = std::make_pair(boxAnchor.colIndex(), boxAnchor.rowIndex());
-  // get rectangular bounding box size
-  int boxWidth = op.width();
-  int boxHeight = op.height();
+  // get attribute
+  xilinx::AIE::FlowAttributeOp flowAttributeOp = cast<xilinx::AIE::FlowAttributeOp>(op.attr().getDefiningOp());
+  // initialize bounding box parameters
+  std::pair<int, int> boxAnchorCoords;
+  int boxWidth = 0;
+  int boxHeight = 0;
+  for(xilinx::AIE::BoundingBoxOp boundingBoxOp : flowAttributeOp.getOps<xilinx::AIE::BoundingBoxOp>()) {
+    // get rectangular bounding box location
+    xilinx::AIE::TileOp boxAnchor = cast<xilinx::AIE::TileOp>(boundingBoxOp.anchor().getDefiningOp());
+    boxAnchorCoords = std::make_pair(boxAnchor.colIndex(), boxAnchor.rowIndex());
+    // get rectangular bounding box size
+    boxWidth = boundingBoxOp.width();
+    boxHeight = boundingBoxOp.height();
+  }
   // for each flow in flowRegion
   for(xilinx::AIE::FlowOp flowOp : op.getOps<xilinx::AIE::FlowOp>()) {
     // check if src/dest outside of bounding box

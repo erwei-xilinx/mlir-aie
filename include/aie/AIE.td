@@ -1348,11 +1348,37 @@ def AIE_SelectOp: AIE_Op<"select", []>, Results<(outs Index)> {
 
 /// Experimental flowRegion operations
 
+def AIE_FlowAttributeOp: AIE_Op<"flowAttribute", [SingleBlockImplicitTerminator<"EndOp">]>, Results<(outs Index)>{
+  // let arguments = (
+  //   ins Index:$parentAttr
+  // );
+
+  let summary = "Declare attributes to a flow region";
+  let description = [{
+    This operation defines constraints and attributes targetting routing regions.
+    It can accept a parent flow attribute as an option.
+
+    Example:
+    ```
+    %t11 = aie.tile(1, 1)
+    %t12 = aie.tile(1, 2)
+    %t21 = aie.tile(2, 1)
+    %a01 = aie.flowAttribute() {
+      aie.boundingBox...
+    }
+    aie.flowRegion(%a01) {
+      aie.flow(%t12, DMA : 0, %t21, DMA : 0)
+    }
+    ```
+  }];
+  let regions = (region AnyRegion:$body);
+  let assemblyFormat = [{ `(` `)` regions attr-dict }];
+  // let verifier = [{ return ::verify(*this); }];
+}
+
 def AIE_FlowRegionOp: AIE_Op<"flowRegion", [SingleBlockImplicitTerminator<"EndOp">]> {
   let arguments = (
-    ins Index:$anchor,
-        I32Attr:$width,
-        I32Attr:$height
+    ins Index:$attr
   );
 
   let summary = "Declare flow routing constraints";
@@ -1367,13 +1393,40 @@ def AIE_FlowRegionOp: AIE_Op<"flowRegion", [SingleBlockImplicitTerminator<"EndOp
     %t11 = aie.tile(1, 1)
     %t12 = aie.tile(1, 2)
     %t21 = aie.tile(2, 1)
-    aie.flowRegion(%t11, [2][2]) {
+    %a01 = aie.flowAttribute() {
+      aie.boundingBox(%t11, [2][2])
+    }
+    aie.flowRegion(%a01) {
       aie.flow(%t12, DMA : 0, %t21, DMA : 0)
     }
     ```
   }];
   let regions = (region AnyRegion:$connections);
-  let assemblyFormat = [{ `(` $anchor `,` `[` $width `]` `[` $height `]` `)` regions attr-dict }];
+  let assemblyFormat = [{ `(` $attr `)` regions attr-dict }];
   let verifier = [{ return ::verify(*this); }];
+}
+
+def AIE_BoundingBoxOp: AIE_Op<"boundingBox", [SingleBlockImplicitTerminator<"EndOp">]> {
+  let arguments = (
+    ins Index:$anchor,
+        I32Attr:$width,
+        I32Attr:$height
+  );
+
+  let summary = "Declare flow routing constraint: bounding box";
+  let description = [{
+    This operation defines a bounding box to constrain a flow region.
+    It references a tile as the north-western anchor, and width and height of a rectangular bounding box.
+    It expects to be referenced by a flowAttributeOp.
+
+    Example:
+    ```
+    %t11 = aie.tile(1, 1)
+    aie.boundingBox(%t11, [2][2]) 
+    ```
+  }];
+  // let regions = (region AnyRegion:$connections);
+  let assemblyFormat = [{ `(` $anchor `,` `[` $width `]` `[` $height `]` `)` attr-dict }];
+  // let verifier = [{ return ::verify(*this); }];
 }
 

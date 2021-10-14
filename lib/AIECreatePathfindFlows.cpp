@@ -106,7 +106,7 @@ public:
     // define an empty bounding box
     Box boundingBox;
 
-    // for each flow in the module, add it to pathfinder
+    // for each unconstrained flow in the module, add it to pathfinder
     // each source can map to multiple different destinations (fanout)
     for(FlowOp flowOp : module.getOps<FlowOp>()) {
       TileOp srcTile = cast<TileOp>(flowOp.source().getDefiningOp());
@@ -126,14 +126,19 @@ public:
     // for each flow in each flowRegion in the module, add it to pathfinder
     // flows within each flowRegion are constrained by the flowRegion's attributes
     for(FlowRegionOp flowRegionOp : module.getOps<FlowRegionOp>()) {
-      // get rectangular bounding box location
-      TileOp boxAnchor = cast<TileOp>(flowRegionOp.anchor().getDefiningOp());
-      Coord boxAnchorCoords = std::make_pair(boxAnchor.colIndex(), boxAnchor.rowIndex());
-      int boxWidth = flowRegionOp.width();
-      int boxHeight = flowRegionOp.height();
-      BoxSize boundingBoxSize = std::make_pair(boxWidth, boxHeight);
-      boundingBox = std::make_pair(boxAnchorCoords, boundingBoxSize);
-      // for each flow in flowRegion
+      FlowAttributeOp flowAttribute = cast<FlowAttributeOp>(flowRegionOp.attr().getDefiningOp());
+      // if(flowAttribute.getOps<BoundingBoxOp>()){
+      for(BoundingBoxOp boundingBoxOp : flowAttribute.getOps<BoundingBoxOp>()) {
+        // get rectangular bounding box location
+        // BoundingBoxOp boundingBoxOp = flowAttribute.getOps<BoundingBoxOp>();
+        TileOp boxAnchor = cast<TileOp>(boundingBoxOp.anchor().getDefiningOp());
+        Coord boxAnchorCoords = std::make_pair(boxAnchor.colIndex(), boxAnchor.rowIndex());
+        int boxWidth = boundingBoxOp.width();
+        int boxHeight = boundingBoxOp.height();
+        BoxSize boundingBoxSize = std::make_pair(boxWidth, boxHeight);
+        boundingBox = std::make_pair(boxAnchorCoords, boundingBoxSize);
+      }
+        // for each flow in flowRegion
       for(FlowOp flowOp : flowRegionOp.getOps<FlowOp>()) {
         TileOp srcTile = cast<TileOp>(flowOp.source().getDefiningOp());
         TileOp dstTile = cast<TileOp>(flowOp.dest().getDefiningOp());

@@ -491,6 +491,14 @@ static LogicalResult verify(xilinx::AIE::FlowRegionOp op) {
     // get rectangular bounding box size
     boxWidth = boundingBoxOp.width();
     boxHeight = boundingBoxOp.height();
+    if (boxWidth == 0) {
+      boundingBoxOp.emitOpError("zero width");
+      return failure();
+    }
+    if (boxHeight == 0) {
+      boundingBoxOp.emitOpError("zero height");
+      return failure();
+    }
   }
   // for each flow in flowRegion
   for(xilinx::AIE::FlowOp flowOp : op.getOps<xilinx::AIE::FlowOp>()) {

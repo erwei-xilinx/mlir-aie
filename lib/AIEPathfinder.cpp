@@ -88,7 +88,7 @@ void Pathfinder::initializeFlowBound(int maxcol, int maxrow, SwitchboxSubGraph &
   unsigned int height = boundingBox.second.second;
   for(unsigned int row = 0; row <= (unsigned int)maxrow; row++) {
     for(unsigned int col = 0; col <= (unsigned int)maxcol; col++) {
-      if (col >= anchorCol && col <= anchorCol + width && row >= anchorRow && row <= anchorRow + height){
+      if (col >= anchorCol && col < anchorCol + width && row >= anchorRow && row < anchorRow + height){
         int tile_offset = row * (maxcol + 1) + col;
         add_vertex((vertex_descriptor)tile_offset, flowBound);
       }

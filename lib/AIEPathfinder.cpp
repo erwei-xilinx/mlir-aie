@@ -79,7 +79,15 @@ void Pathfinder::initializeGraph(int maxcol, int maxrow) {
   Pathfinder::maxIterReached = false;
 }
 
-void Pathfinder::initializeFlowBound(int maxcol, int maxrow, SwitchboxSubGraph &flowBound, Box boundingBox) {
+void Pathfinder::initializeBinaryMap(int maxcol, int maxrow, std::vector< char > &binMap, char value) {
+  for(unsigned int row = 0; row <= (unsigned int)maxrow; row++) {
+    for(unsigned int col = 0; col <= (unsigned int)maxcol; col++) {
+      binMap.push_back(value);
+    }
+  }
+}
+
+void Pathfinder::applyBoundingBox(int maxcol, int maxrow, Box boundingBox, std::vector< char > &binMap) {
   // get bounding box details
   Coord anchorCoord = boundingBox.first;
   unsigned int anchorCol = anchorCoord.first;
@@ -90,6 +98,19 @@ void Pathfinder::initializeFlowBound(int maxcol, int maxrow, SwitchboxSubGraph &
     for(unsigned int col = 0; col <= (unsigned int)maxcol; col++) {
       if (col >= anchorCol && col < anchorCol + width && row >= anchorRow && row < anchorRow + height){
         int tile_offset = row * (maxcol + 1) + col;
+        binMap[tile_offset] = 1; // Using char as bool
+      }
+    }
+  }
+}
+
+// Note: in Boost::subgraph, add_vertex is irreversible. Thus a binary map is maintained before mapping to subgraph
+void Pathfinder::initializeSubgraph(int maxcol, int maxrow, SwitchboxSubGraph &flowBound, std::vector< char > binMap) {
+  // get bounding box details
+  for(unsigned int row = 0; row <= (unsigned int)maxrow; row++) {
+    for(unsigned int col = 0; col <= (unsigned int)maxcol; col++) {
+      int tile_offset = row * (maxcol + 1) + col;
+      if (binMap[tile_offset]) {
         add_vertex((vertex_descriptor)tile_offset, flowBound);
       }
     }
@@ -101,11 +122,11 @@ void Pathfinder::initializeFlowBound(int maxcol, int maxrow, SwitchboxSubGraph &
 // add a flow from src to dst
 // can have an arbitrary number of dst locations due to fanout
 void Pathfinder::addFlow(Coord srcCoords, Port srcPort,
-                         Coord dstCoords, Port dstPort, bool isConstrained, Box boundingBox) {
+                         Coord dstCoords, Port dstPort, std::vector< char > binMap) {
   //check if a flow with this source already exists
   for(unsigned int i = 0; i < flows.size(); i++) {
-    Switchbox* otherSrc = flows[i].first.first;
-    Port otherPort = flows[i].first.second;
+    Switchbox* otherSrc = flows[i].srcDst.first.first;
+    Port otherPort = flows[i].srcDst.first.second;
     if(otherSrc->col == srcCoords.first &&
       otherSrc->row == srcCoords.second &&
       otherPort == srcPort ) {
@@ -121,7 +142,11 @@ void Pathfinder::addFlow(Coord srcCoords, Port srcPort,
           }
         }
         // add the destination to this existing flow, and finish
-        flows[i].second.push_back(dst);
+        flows[i].srcDst.second.push_back(dst);
+        
+        // update binary map
+        flows[i].flowBoundBinMap = binMap;
+
         return;
     }
   }
@@ -133,22 +158,32 @@ void Pathfinder::addFlow(Coord srcCoords, Port srcPort,
     Switchbox* sb = &graph[*v];
     //check if this vertex matches the source 
     if(sb->col == srcCoords.first && sb->row == srcCoords.second)
-      flow.first = std::make_pair(sb, srcPort);
+      flow.srcDst.first = std::make_pair(sb, srcPort);
     
     //check if this vertex matches the destination 
     if(sb->col == dstCoords.first && sb->row == dstCoords.second)
-      flow.second.push_back(std::make_pair(sb, dstPort));
+      flow.srcDst.second.push_back(std::make_pair(sb, dstPort));
   }
+
+  // initialize current flow's binary map
+  for(unsigned int row = 0; row <= (unsigned int)Pathfinder::maxrow; row++) {
+    for(unsigned int col = 0; col <= (unsigned int)Pathfinder::maxcol; col++) {
+      flow.flowBoundBinMap.push_back(0);
+    }
+  }
+
+  // update binary map
+  flow.flowBoundBinMap = binMap;
 
   flows.push_back(flow);
 
-  // create a subgraph for this flow
-  if (isConstrained) {
-    SwitchboxSubGraph& flowBound = graph.create_subgraph();
-    initializeFlowBound(Pathfinder::maxcol, Pathfinder::maxrow, flowBound, boundingBox);
-  }
-  else
-    graph.create_subgraph(vpair.first, vpair.second);
+  // // create a subgraph for this flow
+  // if (isConstrained) {
+  //   SwitchboxSubGraph& flowBound = graph.create_subgraph();
+  //   initializeSubgraph(Pathfinder::maxcol, Pathfinder::maxrow, flowBound, boundingBox);
+  // }
+  // else
+  //   graph.create_subgraph(vpair.first, vpair.second);
 
 
   return;
@@ -193,6 +228,21 @@ Pathfinder::findPaths(const int MAX_ITERATIONS) {
     graph[*edge].over_capacity_count = 0;
   }
 
+  // initialize one subgraph per flow based on flow.binMap
+  for(auto flow : flows) {
+    // create a subgraph for this flow
+    // if (flow.isConstrained) {
+    //   SwitchboxSubGraph& flowBound = graph.create_subgraph();
+    //   initializeSubgraph(Pathfinder::maxcol, Pathfinder::maxrow, flowBound, flow.flowBoundBinMap);
+    // }
+    // else {
+    //   auto vpair = vertices(graph);
+    //   graph.create_subgraph(vpair.first, vpair.second);
+    // }
+    SwitchboxSubGraph& flowBound = graph.create_subgraph();
+    initializeSubgraph(Pathfinder::maxcol, Pathfinder::maxrow, flowBound, flow.flowBoundBinMap);
+  }
+
   // Pathfinder iteration loop
   #define over_capacity_coeff 0.02
   #define used_capacity_coeff 0.02 
@@ -217,7 +267,6 @@ Pathfinder::findPaths(const int MAX_ITERATIONS) {
       }
     }
     // if reach MAX_ITERATIONS, throw an error since no routing can be found
-    // TODO: add error throwing mechanism
     if(++iteration_count > MAX_ITERATIONS) {
       LLVM_DEBUG(llvm::dbgs()
                  << "Pathfinder: MAX_ITERATIONS has been exceeded ("
@@ -256,7 +305,7 @@ Pathfinder::findPaths(const int MAX_ITERATIONS) {
       for(vertex_iterator v = vpair.first; v != vpair.second; v++) {
         Switchbox* sb = &flowBound[*v];
         sb->processed = false;
-        if(sb->col == flow.first.first->col && sb->row == flow.first.first->row)
+        if(sb->col == flow.srcDst.first.first->col && sb->row == flow.srcDst.first.first->row)
           src = *v;
       }
 
@@ -272,17 +321,17 @@ Pathfinder::findPaths(const int MAX_ITERATIONS) {
       // increment used_capacity for the associated channels
       SwitchSettings switchSettings = SwitchSettings();
       //set the input bundle for the source endpoint
-      switchSettings[&flowBound[src]].first = flow.first.second;
+      switchSettings[&flowBound[src]].first = flow.srcDst.first.second;
       flowBound[src].processed = true;
-      for(unsigned int i = 0; i < flow.second.size(); i++) {
+      for(unsigned int i = 0; i < flow.srcDst.second.size(); i++) {
         vertex_descriptor curr;
         for(vertex_iterator v = vpair.first; v != vpair.second; v++)
-          if(flowBound[*v].col == flow.second[i].first->col && flowBound[*v].row == flow.second[i].first->row)
+          if(flowBound[*v].col == flow.srcDst.second[i].first->col && flowBound[*v].row == flow.srcDst.second[i].first->row)
             curr = *v;
         Switchbox *sb = &flowBound[curr];
 
         //set the output bundle for this destination endpoint
-        switchSettings[sb].second.insert(flow.second[i].second);
+        switchSettings[sb].second.insert(flow.srcDst.second[i].second);
 
         // trace backwards until a vertex already processed is reached
         while(sb->processed == false) {
@@ -322,7 +371,7 @@ Pathfinder::findPaths(const int MAX_ITERATIONS) {
         }
       }
       //add this flow to the proposed solution
-      routing_solution[flow.first] = switchSettings;
+      routing_solution[flow.srcDst.first] = switchSettings;
 
       //increment the subgraph iterator
       flowBoundIter++;

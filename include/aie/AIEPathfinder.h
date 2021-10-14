@@ -69,11 +69,11 @@ typedef graph_traits<SwitchboxSubGraph>::in_edge_iterator in_edge_iterator;
 // A Flow defines source and destination vertices
 // Only one source, but any number of destinations (fanout) 
 typedef std::pair< Switchbox*, Port > PathEndPoint;
-// struct Flow {
-//   std::pair< PathEndPoint, std::vector<PathEndPoint> > flowSrcDst;
-//   SwitchboxSubGraph *flowBound;
-// };
-typedef std::pair< PathEndPoint, std::vector<PathEndPoint> > Flow;
+struct Flow {
+  std::pair< PathEndPoint, std::vector<PathEndPoint> > srcDst;
+  std::vector< char > flowBoundBinMap; // std::vector<bool> is bit packed
+};
+// typedef std::pair< PathEndPoint, std::vector<PathEndPoint> > Flow;
 
 class Pathfinder {
 private:
@@ -82,16 +82,18 @@ private:
   // std::vector< SwitchboxSubGraph > flowBounds;
   bool maxIterReached;
   int maxcol, maxrow;
-  void initializeFlowBound(int maxcol, int maxrow, SwitchboxSubGraph &flowBound, Box boundingBox);
+  void initializeSubgraph(int maxcol, int maxrow, SwitchboxSubGraph &flowBound, std::vector< char > binMap);
 
 public:
   Pathfinder();
   Pathfinder(int maxcol, int maxrow);
   void initializeGraph(int maxcol, int maxrow);
   void addFlow(Coord srcCoords, Port srcPort,
-               Coord dstCoords, Port dstPort, bool isConstrained, Box boundingBox);
+               Coord dstCoords, Port dstPort, std::vector< char > binMap);
   void addFixedConnection(Coord coord, Port port);
   bool isLegal();
+  void initializeBinaryMap(int maxcol, int maxrow, std::vector< char > &binMap, char value = 0);
+  void applyBoundingBox(int maxcol, int maxrow, Box boundingBox, std::vector< char > &binMap);
   std::map< PathEndPoint, SwitchSettings > 
     findPaths(const int MAX_ITERATIONS=1000);
 

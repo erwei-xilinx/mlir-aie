@@ -148,9 +148,11 @@ void Pathfinder::addFlow(Coord srcCoords, Port srcPort,
         }
         // add the destination to this existing flow, and finish
         flows[i].srcDst.second.push_back(dst);
-        
-        // update binary map
-        flows[i].flowBoundBinMap = binMap;
+
+        // check for flows which are under multiple constraints
+        for (unsigned int j = 0; j < flows[i].flowBoundBinMap.size(); j++) {
+          if (flows[i].flowBoundBinMap[j] != binMap[j]) assert(false && "detected flow which is under multiple conflicting constraints");
+        }
 
         return;
     }

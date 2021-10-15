@@ -497,8 +497,8 @@ static LogicalResult verify(xilinx::AIE::BoundingBoxOp op) {
     return failure();
   }
   // check keep-in/-out string
-  if (op.inOrOut() != "keep-in" and op.inOrOut() != "keep-out") {
-    op.emitOpError("unknown string ") << op.inOrOut() << ". Please choose from {keep-in, keep-out}";
+  if (op.keepInOrOut() != "keep-in" and op.keepInOrOut() != "keep-out") {
+    op.emitOpError("unknown string ") << op.keepInOrOut() << ". Please choose from {keep-in, keep-out}";
     return failure();
   }
   // // for each flow in flowRegion

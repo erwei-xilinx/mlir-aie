@@ -127,23 +127,53 @@ public:
     // for each flow in each flowRegion in the module, add it to pathfinder
     // flows within each flowRegion are constrained by the flowRegion's attributes
     for(FlowRegionOp flowRegionOp : module.getOps<FlowRegionOp>()) {
+      // create a buffer of flowAttributeOps to trace all parent attributes, last in first out
+      std::vector< FlowAttributeOp > flowAttributeBuffer;
       FlowAttributeOp flowAttribute = cast<FlowAttributeOp>(flowRegionOp.attr().getDefiningOp());
+      flowAttributeBuffer.push_back(flowAttribute);
+      while(flowAttribute.parentAttr()){
+        flowAttribute = cast<FlowAttributeOp>(flowAttribute.parentAttr().getDefiningOp());
+        flowAttributeBuffer.push_back(flowAttribute);
+      }
+
       // create a binary map for each flowRegion, representing the combined constraints in this flowRegion
       // initialized with zeros
       std::vector< char > binMap;
       pathfinder.initializeBinaryMap(maxcol, maxrow, binMap);
-      // define an empty bounding box
-      Box boundingBox;
-      for(BoundingBoxOp boundingBoxOp : flowAttribute.getOps<BoundingBoxOp>()) {
-        // get rectangular bounding box location
-        TileOp boxAnchor = cast<TileOp>(boundingBoxOp.anchor().getDefiningOp());
-        Coord boxAnchorCoords = std::make_pair(boxAnchor.colIndex(), boxAnchor.rowIndex());
-        int boxWidth = boundingBoxOp.width();
-        int boxHeight = boundingBoxOp.height();
-        BoxSize boundingBoxSize = std::make_pair(boxWidth, boxHeight);
-        boundingBox = std::make_pair(boxAnchorCoords, boundingBoxSize);
-        pathfinder.applyBoundingBox(maxcol, maxrow, boundingBox, binMap, (std::string)boundingBoxOp.inOrOut());
+
+      // for each parent attribute in the LIFO buffer
+      while(!flowAttributeBuffer.empty()) {
+        FlowAttributeOp flowAttributePopBack = flowAttributeBuffer.back();
+        flowAttributeBuffer.pop_back();
+
+        // define an empty bounding box
+        Box boundingBox;
+        // update binary map based on each boundingBoxOp, in its exact same order
+        for(BoundingBoxOp boundingBoxOp : flowAttributePopBack.getOps<BoundingBoxOp>()) {
+          // get rectangular bounding box location
+          TileOp boxAnchor = cast<TileOp>(boundingBoxOp.anchor().getDefiningOp());
+          Coord boxAnchorCoords = std::make_pair(boxAnchor.colIndex(), boxAnchor.rowIndex());
+          int boxWidth = boundingBoxOp.width();
+          int boxHeight = boundingBoxOp.height();
+          BoxSize boundingBoxSize = std::make_pair(boxWidth, boxHeight);
+          boundingBox = std::make_pair(boxAnchorCoords, boundingBoxSize);
+          pathfinder.applyBoundingBox(maxcol, maxrow, boundingBox, binMap, (std::string)boundingBoxOp.keepInOrOut());
+        }
       }
+
+      // // define an empty bounding box
+      // Box boundingBox;
+      // // update binary map based on each boundingBoxOp, in exact order
+      // for(BoundingBoxOp boundingBoxOp : flowAttribute.getOps<BoundingBoxOp>()) {
+      //   // get rectangular bounding box location
+      //   TileOp boxAnchor = cast<TileOp>(boundingBoxOp.anchor().getDefiningOp());
+      //   Coord boxAnchorCoords = std::make_pair(boxAnchor.colIndex(), boxAnchor.rowIndex());
+      //   int boxWidth = boundingBoxOp.width();
+      //   int boxHeight = boundingBoxOp.height();
+      //   BoxSize boundingBoxSize = std::make_pair(boxWidth, boxHeight);
+      //   boundingBox = std::make_pair(boxAnchorCoords, boundingBoxSize);
+      //   pathfinder.applyBoundingBox(maxcol, maxrow, boundingBox, binMap, (std::string)boundingBoxOp.inOrOut());
+      // }
         // for each flow in flowRegion
       for(FlowOp flowOp : flowRegionOp.getOps<FlowOp>()) {
         TileOp srcTile = cast<TileOp>(flowOp.source().getDefiningOp());

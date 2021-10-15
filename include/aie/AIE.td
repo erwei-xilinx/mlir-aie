@@ -1346,12 +1346,12 @@ def AIE_SelectOp: AIE_Op<"select", []>, Results<(outs Index)> {
 }
 
 
-/// Experimental flowRegion operations
+/// Experimental flowAttribute and flowRegion operations
 
 def AIE_FlowAttributeOp: AIE_Op<"flowAttribute", [SingleBlockImplicitTerminator<"EndOp">]>, Results<(outs Index)>{
-  // let arguments = (
-  //   ins Index:$parentAttr
-  // );
+  let arguments = (
+    ins Optional<Index>:$parentAttr
+  );
 
   let summary = "Declare attributes to a flow region";
   let description = [{
@@ -1372,7 +1372,7 @@ def AIE_FlowAttributeOp: AIE_Op<"flowAttribute", [SingleBlockImplicitTerminator<
     ```
   }];
   let regions = (region AnyRegion:$body);
-  let assemblyFormat = [{ `(` `)` regions attr-dict }];
+  let assemblyFormat = [{ `(` ($parentAttr^)? `)` regions attr-dict }];
   // let verifier = [{ return ::verify(*this); }];
 }
 
@@ -1406,7 +1406,7 @@ def AIE_FlowRegionOp: AIE_Op<"flowRegion", [SingleBlockImplicitTerminator<"EndOp
 
 def AIE_BoundingBoxOp: AIE_Op<"boundingBox", [SingleBlockImplicitTerminator<"EndOp">]> {
   let arguments = (
-    ins StrAttr:$inOrOut,
+    ins StrAttr:$keepInOrOut,
         Index:$anchor,
         I32Attr:$width,
         I32Attr:$height
@@ -1426,7 +1426,7 @@ def AIE_BoundingBoxOp: AIE_Op<"boundingBox", [SingleBlockImplicitTerminator<"End
     aie.boundingBox(%t11, [2][2]) 
     ```
   }];
-  let assemblyFormat = [{ `(` $inOrOut `,` $anchor `,` `[` $width `]` `[` $height `]` `)` attr-dict }];
+  let assemblyFormat = [{ `(` $keepInOrOut `,` $anchor `,` `[` $width `]` `[` $height `]` `)` attr-dict }];
   let verifier = [{ return ::verify(*this); }];
 }
 

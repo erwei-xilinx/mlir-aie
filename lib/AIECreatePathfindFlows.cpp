@@ -142,7 +142,7 @@ public:
         int boxHeight = boundingBoxOp.height();
         BoxSize boundingBoxSize = std::make_pair(boxWidth, boxHeight);
         boundingBox = std::make_pair(boxAnchorCoords, boundingBoxSize);
-        pathfinder.applyBoundingBox(maxcol, maxrow, boundingBox, binMap);
+        pathfinder.applyBoundingBox(maxcol, maxrow, boundingBox, binMap, (std::string)boundingBoxOp.inOrOut());
       }
         // for each flow in flowRegion
       for(FlowOp flowOp : flowRegionOp.getOps<FlowOp>()) {

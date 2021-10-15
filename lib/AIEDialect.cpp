@@ -476,29 +476,30 @@ static LogicalResult verify(xilinx::AIE::UseLockOp op) {
   return success();
 }
 
-// flowRegion
-static LogicalResult verify(xilinx::AIE::FlowRegionOp op) {
-  // get attribute
-  xilinx::AIE::FlowAttributeOp flowAttributeOp = cast<xilinx::AIE::FlowAttributeOp>(op.attr().getDefiningOp());
+// flow bounding box
+static LogicalResult verify(xilinx::AIE::BoundingBoxOp op) {
   // initialize bounding box parameters
   std::pair<int, int> boxAnchorCoords;
   int boxWidth = 0;
   int boxHeight = 0;
-  for(xilinx::AIE::BoundingBoxOp boundingBoxOp : flowAttributeOp.getOps<xilinx::AIE::BoundingBoxOp>()) {
-    // get rectangular bounding box location
-    xilinx::AIE::TileOp boxAnchor = cast<xilinx::AIE::TileOp>(boundingBoxOp.anchor().getDefiningOp());
-    boxAnchorCoords = std::make_pair(boxAnchor.colIndex(), boxAnchor.rowIndex());
-    // get rectangular bounding box size
-    boxWidth = boundingBoxOp.width();
-    boxHeight = boundingBoxOp.height();
-    if (boxWidth == 0) {
-      boundingBoxOp.emitOpError("zero width");
-      return failure();
-    }
-    if (boxHeight == 0) {
-      boundingBoxOp.emitOpError("zero height");
-      return failure();
-    }
+  // // get rectangular bounding box location
+  // xilinx::AIE::TileOp boxAnchor = cast<xilinx::AIE::TileOp>(op.anchor().getDefiningOp());
+  // boxAnchorCoords = std::make_pair(boxAnchor.colIndex(), boxAnchor.rowIndex());
+  // check rectangular bounding box size
+  boxWidth = op.width();
+  boxHeight = op.height();
+  if (boxWidth == 0) {
+    op.emitOpError("zero width");
+    return failure();
+  }
+  if (boxHeight == 0) {
+    op.emitOpError("zero height");
+    return failure();
+  }
+  // check keep-in/-out string
+  if (op.inOrOut() != "keep-in" and op.inOrOut() != "keep-out") {
+    op.emitOpError("unknown string ") << op.inOrOut() << ". Please choose from {keep-in, keep-out}";
+    return failure();
   }
   // // for each flow in flowRegion
   // for(xilinx::AIE::FlowOp flowOp : op.getOps<xilinx::AIE::FlowOp>()) {

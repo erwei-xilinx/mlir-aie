@@ -87,18 +87,23 @@ void Pathfinder::initializeBinaryMap(int maxcol, int maxrow, std::vector< char >
   }
 }
 
-void Pathfinder::applyBoundingBox(int maxcol, int maxrow, Box boundingBox, std::vector< char > &binMap) {
+void Pathfinder::applyBoundingBox(int maxcol, int maxrow, Box boundingBox, std::vector< char > &binMap, std::string inOrOut) {
   // get bounding box details
   Coord anchorCoord = boundingBox.first;
   unsigned int anchorCol = anchorCoord.first;
   unsigned int anchorRow = anchorCoord.second;
   unsigned int width = boundingBox.second.first;
   unsigned int height = boundingBox.second.second;
+  // keep in or out
+  char value;
+  if (inOrOut == "keep-in") value = 1;
+  else if (inOrOut == "keep-out") value = 0;
+  else assert(false && "Unknown string passed to boundingBoxOp");
   for(unsigned int row = 0; row <= (unsigned int)maxrow; row++) {
     for(unsigned int col = 0; col <= (unsigned int)maxcol; col++) {
       if (col >= anchorCol && col < anchorCol + width && row >= anchorRow && row < anchorRow + height){
         int tile_offset = row * (maxcol + 1) + col;
-        binMap[tile_offset] = 1; // Using char as bool
+        binMap[tile_offset] = value; // Using char as bool
       }
     }
   }

@@ -1355,8 +1355,8 @@ def AIE_FlowAttributeOp: AIE_Op<"flowAttribute", [SingleBlockImplicitTerminator<
 
   let summary = "Declare attributes to a flow region";
   let description = [{
-    This operation defines constraints and attributes targetting routing regions.
-    It can accept a parent flow attribute as an option.
+    This operation defines constraints targetting routing regions.
+    TODO: It can accept a parent flow attribute as an option. 
 
     Example:
     ```
@@ -1381,12 +1381,10 @@ def AIE_FlowRegionOp: AIE_Op<"flowRegion", [SingleBlockImplicitTerminator<"EndOp
     ins Index:$attr
   );
 
-  let summary = "Declare flow routing constraints";
+  let summary = "Declare a region made of flows";
   let description = [{
-    This operation defines constraints and attributes for the routing region of AIE.flow.
-    It references a tile as the north-western anchor, and width and height of a rectangular bounding box.
-    TODO: Referece list will be replaced with various constraint ops, including but not limited to bounding boxes.
-    It contains a region of AIE.flow operations to be constrained.
+    This operation defines a region made of AIE.flow operations.
+    Flows in this region will be constrained by the same set of flowAttribute operations.
 
     Example:
     ```
@@ -1403,20 +1401,23 @@ def AIE_FlowRegionOp: AIE_Op<"flowRegion", [SingleBlockImplicitTerminator<"EndOp
   }];
   let regions = (region AnyRegion:$connections);
   let assemblyFormat = [{ `(` $attr `)` regions attr-dict }];
-  let verifier = [{ return ::verify(*this); }];
+  // let verifier = [{ return ::verify(*this); }];
 }
 
 def AIE_BoundingBoxOp: AIE_Op<"boundingBox", [SingleBlockImplicitTerminator<"EndOp">]> {
   let arguments = (
-    ins Index:$anchor,
+    ins StrAttr:$inOrOut,
+        Index:$anchor,
         I32Attr:$width,
         I32Attr:$height
   );
 
   let summary = "Declare flow routing constraint: bounding box";
   let description = [{
-    This operation defines a bounding box to constrain a flow region.
+    This operation defines a bounding box as a constraint to a flow region.
     It references a tile as the north-western anchor, and width and height of a rectangular bounding box.
+    Its first string attribute determines if it is a 'keep-in' or 'keep-out' box.
+    Multiple bounding box ops can be instantiated per flow attribute, with latter ones overruling predecesors.
     It expects to be referenced by a flowAttributeOp.
 
     Example:
@@ -1425,8 +1426,7 @@ def AIE_BoundingBoxOp: AIE_Op<"boundingBox", [SingleBlockImplicitTerminator<"End
     aie.boundingBox(%t11, [2][2]) 
     ```
   }];
-  // let regions = (region AnyRegion:$connections);
-  let assemblyFormat = [{ `(` $anchor `,` `[` $width `]` `[` $height `]` `)` attr-dict }];
-  // let verifier = [{ return ::verify(*this); }];
+  let assemblyFormat = [{ `(` $inOrOut `,` $anchor `,` `[` $width `]` `[` $height `]` `)` attr-dict }];
+  let verifier = [{ return ::verify(*this); }];
 }
 

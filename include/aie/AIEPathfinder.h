@@ -93,7 +93,7 @@ public:
   void addFixedConnection(Coord coord, Port port);
   bool isLegal();
   void initializeBinaryMap(int maxcol, int maxrow, std::vector< char > &binMap, char value = 0);
-  void applyBoundingBox(int maxcol, int maxrow, Box boundingBox, std::vector< char > &binMap);
+  void applyBoundingBox(int maxcol, int maxrow, Box boundingBox, std::vector< char > &binMap, std::string inOrOut);
   std::map< PathEndPoint, SwitchSettings > 
     findPaths(const int MAX_ITERATIONS=1000);
 

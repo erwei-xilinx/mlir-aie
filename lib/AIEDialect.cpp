@@ -482,9 +482,6 @@ static LogicalResult verify(xilinx::AIE::BoundingBoxOp op) {
   std::pair<int, int> boxAnchorCoords;
   int boxWidth = 0;
   int boxHeight = 0;
-  // // get rectangular bounding box location
-  // xilinx::AIE::TileOp boxAnchor = cast<xilinx::AIE::TileOp>(op.anchor().getDefiningOp());
-  // boxAnchorCoords = std::make_pair(boxAnchor.colIndex(), boxAnchor.rowIndex());
   // check rectangular bounding box size
   boxWidth = op.width();
   boxHeight = op.height();
@@ -498,23 +495,10 @@ static LogicalResult verify(xilinx::AIE::BoundingBoxOp op) {
   }
   // check keep-in/-out string
   if (op.keepInOrOut() != "keep-in" and op.keepInOrOut() != "keep-out") {
-    op.emitOpError("unknown string ") << op.keepInOrOut() << ". Please choose from {keep-in, keep-out}";
+    op.emitOpError("unknown string ")
+        << op.keepInOrOut() << ". Please choose from {keep-in, keep-out}";
     return failure();
   }
-  // // for each flow in flowRegion
-  // for(xilinx::AIE::FlowOp flowOp : op.getOps<xilinx::AIE::FlowOp>()) {
-  //   // check if src/dest outside of bounding box
-  //   xilinx::AIE::TileOp srcTile = cast<xilinx::AIE::TileOp>(flowOp.source().getDefiningOp());
-  //   xilinx::AIE::TileOp dstTile = cast<xilinx::AIE::TileOp>(flowOp.dest().getDefiningOp());
-  //   std::pair<int, int> srcCoords = std::make_pair(srcTile.colIndex(), srcTile.rowIndex());
-  //   std::pair<int, int> dstCoords = std::make_pair(dstTile.colIndex(), dstTile.rowIndex());
-  //   if (srcCoords.first < boxAnchorCoords.first || srcCoords.first > boxAnchorCoords.first + boxWidth || srcCoords.second < boxAnchorCoords.second || srcCoords.second > boxAnchorCoords.second + boxHeight){
-  //     flowOp.emitOpError("source outside of bounding box").attachNote() << "bounding box anchor: (" << boxAnchorCoords.first << "," << boxAnchorCoords.second << "), width: " << boxWidth << ", height: " << boxHeight;
-  //   }
-  //   if (dstCoords.first < boxAnchorCoords.first || dstCoords.first > boxAnchorCoords.first + boxWidth || dstCoords.second < boxAnchorCoords.second || dstCoords.second > boxAnchorCoords.second + boxHeight){
-  //     flowOp.emitOpError("destination outside of bounding box").attachNote() << "bounding box anchor: (" << boxAnchorCoords.first << "," << boxAnchorCoords.second << "), width: " << boxWidth << ", height: " << boxHeight;
-  //   }
-  // }
 
   return success();
 }

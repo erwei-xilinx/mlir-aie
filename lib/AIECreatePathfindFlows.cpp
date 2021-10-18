@@ -103,7 +103,6 @@ public:
 
     pathfinder = Pathfinder(maxcol, maxrow);
 
-
     // for each unconstrained flow in the module, add it to pathfinder
     // each source can map to multiple different destinations (fanout)
     for(FlowOp flowOp : module.getOps<FlowOp>()) {
@@ -125,72 +124,77 @@ public:
     }
 
     // for each flow in each flowRegion in the module, add it to pathfinder
-    // flows within each flowRegion are constrained by the flowRegion's attributes
-    for(FlowRegionOp flowRegionOp : module.getOps<FlowRegionOp>()) {
-      // create a buffer of flowAttributeOps to trace all parent attributes, last in first out
-      std::vector< FlowAttributeOp > flowAttributeBuffer;
-      FlowAttributeOp flowAttribute = cast<FlowAttributeOp>(flowRegionOp.attr().getDefiningOp());
+    // flows within each flowRegion are constrained by the flowRegion's
+    // attributes
+    for (FlowRegionOp flowRegionOp : module.getOps<FlowRegionOp>()) {
+      // create a buffer of flowAttributeOps to trace all parent attributes,
+      // last in first out
+      std::vector<FlowAttributeOp> flowAttributeBuffer;
+      FlowAttributeOp flowAttribute =
+          cast<FlowAttributeOp>(flowRegionOp.attr().getDefiningOp());
       flowAttributeBuffer.push_back(flowAttribute);
-      while(flowAttribute.parentAttr()){
-        flowAttribute = cast<FlowAttributeOp>(flowAttribute.parentAttr().getDefiningOp());
+      while (flowAttribute.parentAttr()) {
+        flowAttribute =
+            cast<FlowAttributeOp>(flowAttribute.parentAttr().getDefiningOp());
         flowAttributeBuffer.push_back(flowAttribute);
       }
 
-      // create a binary map for each flowRegion, representing the combined constraints in this flowRegion
-      // initialized with zeros
-      std::vector< char > binMap;
+      // create a binary map for each flowRegion, representing the combined
+      // constraints in this flowRegion initialized with zeros
+      std::vector<char> binMap;
       pathfinder.initializeBinaryMap(maxcol, maxrow, binMap);
 
       // for each parent attribute in the LIFO buffer
-      while(!flowAttributeBuffer.empty()) {
+      while (!flowAttributeBuffer.empty()) {
         FlowAttributeOp flowAttributePopBack = flowAttributeBuffer.back();
         flowAttributeBuffer.pop_back();
 
         // define an empty bounding box
         Box boundingBox;
-        // update binary map based on each boundingBoxOp, in its exact same order
-        for(BoundingBoxOp boundingBoxOp : flowAttributePopBack.getOps<BoundingBoxOp>()) {
+        // update binary map based on each boundingBoxOp, in its exact same
+        // order
+        for (BoundingBoxOp boundingBoxOp :
+             flowAttributePopBack.getOps<BoundingBoxOp>()) {
           // get rectangular bounding box location
-          TileOp boxAnchor = cast<TileOp>(boundingBoxOp.anchor().getDefiningOp());
-          Coord boxAnchorCoords = std::make_pair(boxAnchor.colIndex(), boxAnchor.rowIndex());
+          TileOp boxAnchor =
+              cast<TileOp>(boundingBoxOp.anchor().getDefiningOp());
+          Coord boxAnchorCoords =
+              std::make_pair(boxAnchor.colIndex(), boxAnchor.rowIndex());
           int boxWidth = boundingBoxOp.width();
           int boxHeight = boundingBoxOp.height();
           BoxSize boundingBoxSize = std::make_pair(boxWidth, boxHeight);
           boundingBox = std::make_pair(boxAnchorCoords, boundingBoxSize);
-          pathfinder.applyBoundingBox(maxcol, maxrow, boundingBox, binMap, (std::string)boundingBoxOp.keepInOrOut());
+          pathfinder.applyBoundingBox(maxcol, maxrow, boundingBox, binMap,
+                                      (std::string)boundingBoxOp.keepInOrOut());
         }
       }
 
-      // // define an empty bounding box
-      // Box boundingBox;
-      // // update binary map based on each boundingBoxOp, in exact order
-      // for(BoundingBoxOp boundingBoxOp : flowAttribute.getOps<BoundingBoxOp>()) {
-      //   // get rectangular bounding box location
-      //   TileOp boxAnchor = cast<TileOp>(boundingBoxOp.anchor().getDefiningOp());
-      //   Coord boxAnchorCoords = std::make_pair(boxAnchor.colIndex(), boxAnchor.rowIndex());
-      //   int boxWidth = boundingBoxOp.width();
-      //   int boxHeight = boundingBoxOp.height();
-      //   BoxSize boundingBoxSize = std::make_pair(boxWidth, boxHeight);
-      //   boundingBox = std::make_pair(boxAnchorCoords, boundingBoxSize);
-      //   pathfinder.applyBoundingBox(maxcol, maxrow, boundingBox, binMap, (std::string)boundingBoxOp.inOrOut());
-      // }
-        // for each flow in flowRegion
-      for(FlowOp flowOp : flowRegionOp.getOps<FlowOp>()) {
+      // for each flow in flowRegion
+      for (FlowOp flowOp : flowRegionOp.getOps<FlowOp>()) {
         TileOp srcTile = cast<TileOp>(flowOp.source().getDefiningOp());
         TileOp dstTile = cast<TileOp>(flowOp.dest().getDefiningOp());
-        Coord srcCoords = std::make_pair(srcTile.colIndex(), srcTile.rowIndex());
-        Coord dstCoords = std::make_pair(dstTile.colIndex(), dstTile.rowIndex());
-        Port srcPort = std::make_pair(flowOp.sourceBundle(), flowOp.sourceChannel());
-        Port dstPort = std::make_pair(flowOp.destBundle(), flowOp.destChannel());
-        LLVM_DEBUG(llvm::dbgs() << "\tAdding Flow: (" << srcCoords.first << ", " << srcCoords.second << ")" <<
-            stringifyWireBundle(srcPort.first) << (int)srcPort.second <<
-            " -> (" << dstCoords.first << ", " << dstCoords.second << ")" <<
-            stringifyWireBundle(dstPort.first) << (int)dstPort.second << "\n");
+        Coord srcCoords =
+            std::make_pair(srcTile.colIndex(), srcTile.rowIndex());
+        Coord dstCoords =
+            std::make_pair(dstTile.colIndex(), dstTile.rowIndex());
+        Port srcPort =
+            std::make_pair(flowOp.sourceBundle(), flowOp.sourceChannel());
+        Port dstPort =
+            std::make_pair(flowOp.destBundle(), flowOp.destChannel());
+        LLVM_DEBUG(llvm::dbgs()
+                   << "\tAdding Flow: (" << srcCoords.first << ", "
+                   << srcCoords.second << ")"
+                   << stringifyWireBundle(srcPort.first) << (int)srcPort.second
+                   << " -> (" << dstCoords.first << ", " << dstCoords.second
+                   << ")" << stringifyWireBundle(dstPort.first)
+                   << (int)dstPort.second << "\n");
         // check if src/dst outside of flowRegion
         int srcTileOffset = srcCoords.second * (maxcol + 1) + srcCoords.first;
         int dstTileOffset = dstCoords.second * (maxcol + 1) + dstCoords.first;
-        if (!binMap[srcTileOffset]) flowOp.emitOpError("source outside of flow region");
-        if (!binMap[dstTileOffset]) flowOp.emitOpError("destination outside of flow region");
+        if (!binMap[srcTileOffset])
+          flowOp.emitOpError("source outside of flow region");
+        if (!binMap[dstTileOffset])
+          flowOp.emitOpError("destination outside of flow region");
         // create flow. constrained = true
         pathfinder.addFlow(srcCoords, srcPort, dstCoords, dstPort, binMap);
       }

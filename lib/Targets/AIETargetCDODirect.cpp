@@ -635,7 +635,11 @@ struct AIEControl {
         if (!isdma && (switchboxOp.rowIndex() == 0))
           isdma = connectOp.getDestBundle() == WireBundle::South;
         // Flag for overriding DROP_HEADER. TODO: Formalize this in tablegen
-        isdma &= !connectOp->hasAttr("keep_pkt_header");
+        if (connectOp->getAttrOfType<BoolAttr>("keep_pkt_header"))
+          isdma &= connectOp->getAttrOfType<BoolAttr>("keep_pkt_header")
+                       .getValue() == false;
+        else
+          isdma = false;
         auto dropHeader =
             isdma ? XAIE_SS_PKT_DROP_HEADER : XAIE_SS_PKT_DONOT_DROP_HEADER;
         TRY_XAIE_API_EMIT_ERROR(

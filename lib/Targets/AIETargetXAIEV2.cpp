@@ -659,6 +659,12 @@ mlir::LogicalResult AIETranslateToXAIEV2(ModuleOp module, raw_ostream &output) {
         mask |= (1 << msel);
       }
       bool isdma = (connectOp.getDestBundle() == WireBundle::DMA);
+      if (connectOp->getAttrOfType<BoolAttr>("keep_pkt_header"))
+        isdma &=
+            connectOp->getAttrOfType<BoolAttr>("keep_pkt_header").getValue() ==
+            false;
+      else
+        isdma = false;
 
       output << "__mlir_aie_try(XAie_StrmPktSwMstrPortEnable(" << deviceInstRef
              << ", " << tileLocStr("x", "y") << ", "

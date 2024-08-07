@@ -428,8 +428,11 @@ Pathfinder::findPaths(const int maxIterations) {
           assert(ch != nullptr && "couldn't find ch");
           int channel;
           // find all available channels in
+          bool isPktEndPoint =
+              false; // TODO: find formal way to infer conditions to do pkt
+                     // fanin at certain switchbox.
           std::vector<int> availableChannels = curr->findAvailableChannelIn(
-              getConnectingBundle(ch->bundle), lastDestPort, isPkt);
+              getConnectingBundle(ch->bundle), lastDestPort, isPktEndPoint);
           if (availableChannels.size() > 0) {
             // if possible, choose the channel that predecessor can also use
             // todo: consider all predecessors?
@@ -443,7 +446,7 @@ Pathfinder::findPaths(const int maxIterations) {
                 std::vector<int> availablePredChannels =
                     pred->findAvailableChannelIn(
                         getConnectingBundle(predCh->bundle),
-                        {ch->bundle, channel}, isPkt);
+                        {ch->bundle, channel}, isPktEndPoint);
                 if (availablePredChannels.size() > 0) {
                   bFound = true;
                   break;
@@ -454,7 +457,7 @@ Pathfinder::findPaths(const int maxIterations) {
               channel = availableChannels[0];
             bool succeed =
                 curr->allocate({getConnectingBundle(ch->bundle), channel},
-                               lastDestPort, isPkt);
+                               lastDestPort, isPktEndPoint);
             if (!succeed)
               assert(false && "invalid allocation");
             LLVM_DEBUG(llvm::dbgs()
@@ -507,7 +510,8 @@ Pathfinder::findPaths(const int maxIterations) {
           if (curr == src.sb &&
               std::find(srcDestPorts.begin(), srcDestPorts.end(),
                         lastDestPort) == srcDestPorts.end()) {
-            bool succeed = src.sb->allocate(src.port, lastDestPort, isPkt);
+            bool succeed =
+                src.sb->allocate(src.port, lastDestPort, isPktEndPoint);
             if (!succeed) {
               isLegal = false;
               overCapacity[ch]++;
